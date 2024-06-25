@@ -119,6 +119,6 @@ button
     width: 30px;
     height: inherit;
     object-fit: cover;
-    content: url("./deleteIcon.png");
+    content: url("../deleteIcon.png");
 }
 
