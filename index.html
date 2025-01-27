@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+        }
+        .wrapper {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+        .main
+        {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+        }
+        .section {
+            margin-bottom: 30px;
+            flex: 1;
+        }
+        .comment-box {
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 10px;
+            background: #252525;
+            color: #b0b0b0;
+        }
+        .comment-list {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .error {
+            color: #ff6f61;
+            font-size: 0.85em;
+            margin-left: 15px;
+        }
+        .button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .button-primary {
+            background-color: #3a7bd5;
+            color: #fff;
+        }
+        .button-primary:hover {
+            background-color: #3366cc;
+        }
+        .button-secondary {
+            background-color: #d9534f;
+            color: #fff;
+        }
+        .button-secondary:hover {
+            background-color: #c3473e;
+        }
+        textarea {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #252525;
+            color: #e0e0e0;
+            resize: none;
+        }
+        .feedback-row {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <h1>Feedback Manager</h1>
+
+        <div class="main" >
+            <!-- Unsafe Feedback Section -->
+            <div class="section">
+                <h2>Unsafe Feedback</h2>
+                <textarea id="unsafe-feedback" rows="4" placeholder="Enter your feedback..."></textarea>
+                <div class="feedback-row">
+                    <button class="button button-primary" id="add-unsafe-feedback">Submit Feedback</button>
+                    <button class="button button-secondary" id="clear-unsafe-feedback">Clear All</button>
+                    <p id="unsafe-error" class="error"></p>
+                </div>
+                <div id="unsafe-feedback-list" class="comment-list"></div>
+            </div>
+
+            <!-- Safe Feedback Section -->
+            <div class="section">
+                <h2>Safe Feedback</h2>
+                <textarea id="safe-feedback" rows="4" placeholder="Enter your feedback..."></textarea>
+                <div class="feedback-row">
+                    <button class="button button-primary" id="add-safe-feedback">Submit Feedback</button>
+                    <button class="button button-secondary" id="clear-safe-feedback">Clear All</button>
+                    <input type="checkbox" id="sanitize-input" checked> <label for="sanitize-input">Enable Input Validation</label>
+                    <p id="safe-error" class="error"></p>
+                </div>
+                <div id="safe-feedback-list" class="comment-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Validate input
+     
+
+        // Unsafe Feedback Section
+        const unsafeInput = document.getElementById('unsafe-feedback');
+        const unsafeList = document.getElementById('unsafe-feedback-list');
+        const unsafeAddButton = document.getElementById('add-unsafe-feedback');
+        const unsafeClearButton = document.getElementById('clear-unsafe-feedback');
+        const unsafeError = document.getElementById('unsafe-error');
+
+        function loadUnsafeFeedback() {
+            const feedback = JSON.parse(localStorage.getItem('unsafeFeedback')) || [];
+            unsafeList.innerHTML = '';
+            feedback.forEach(item => {
+                const feedbackDiv = document.createElement('div');
+                feedbackDiv.className = 'comment-box';
+                feedbackDiv.innerHTML = item; // Unsafe: Potential XSS vulnerability
+                unsafeList.appendChild(feedbackDiv);
+            });
+        }
+
+        function addUnsafeFeedback() {
+            const text = unsafeInput.value.trim();
+            unsafeError.textContent = '';
+
+            const feedback = JSON.parse(localStorage.getItem('unsafeFeedback')) || [];
+            feedback.push(text);
+            localStorage.setItem('unsafeFeedback', JSON.stringify(feedback));
+
+            unsafeInput.value = '';
+            loadUnsafeFeedback();
+        }
+
+        function clearUnsafeFeedback() {
+            localStorage.removeItem('unsafeFeedback');
+            loadUnsafeFeedback();
+        }
+
+        unsafeAddButton.addEventListener('click', addUnsafeFeedback);
+        unsafeClearButton.addEventListener('click', clearUnsafeFeedback);
+
+        // Safe Feedback Section
+        const safeInput = document.getElementById('safe-feedback');
+        const safeList = document.getElementById('safe-feedback-list');
+        const safeAddButton = document.getElementById('add-safe-feedback');
+        const safeClearButton = document.getElementById('clear-safe-feedback');
+        const safeError = document.getElementById('safe-error');
+        const sanitizeCheckbox = document.getElementById('sanitize-input');
+
+        function loadSafeFeedback() {
+            const feedback = JSON.parse(localStorage.getItem('safeFeedback')) || [];
+            safeList.innerHTML = '';
+            feedback.forEach(item => {
+                const feedbackDiv = document.createElement('div');
+                feedbackDiv.className = 'comment-box';
+                feedbackDiv.innerText = sanitizeText(item); // Escaped for XSS prevention
+                safeList.appendChild(feedbackDiv);
+            });
+        }
+
+        function addSafeFeedback() {
+            const text = safeInput.value.trim();
+            if (sanitizeCheckbox.checked && !validateInput(text)) {
+                safeError.textContent = 'Input contains unsafe content.';
+                return;
+            }
+
+            safeError.textContent = '';
+            const feedback = JSON.parse(localStorage.getItem('safeFeedback')) || [];
+            feedback.push(text);
+            localStorage.setItem('safeFeedback', JSON.stringify(feedback));
+
+            safeInput.value = '';
+            loadSafeFeedback();
+        }
+
+        function clearSafeFeedback() {
+            localStorage.removeItem('safeFeedback');
+            loadSafeFeedback();
+        }
+        function validateInput(text) {
+            const invalidPattern = /<script|on\w+=|javascript:/i;
+            return text.length > 0 && text.length <= 250 && !invalidPattern.test(text);
+        }
+
+        function sanitizeText(str) {
+            return str.replace(/[&<>"]/g, char => {
+                const escapeMap = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;'
+                };
+                return escapeMap[char] || char;
+            });
+        }
+
+        safeAddButton.addEventListener('click', addSafeFeedback);
+        safeClearButton.addEventListener('click', clearSafeFeedback);
+
+        // Initialize on load
+        loadUnsafeFeedback();
+        loadSafeFeedback();
+    </script>
+</body>
+</html>
